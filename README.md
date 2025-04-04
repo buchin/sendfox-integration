@@ -1,6 +1,6 @@
 # SendFox Integration Package
 
-This package provides a simple integration with the SendFox API for Laravel applications. It allows you to create contacts and manage lists using the SendFox API.
+This package provides a simple integration with the SendFox API for Laravel applications. It allows you to create contacts using the SendFox API.
 
 ## Installation
 
@@ -28,7 +28,7 @@ This package provides a simple integration with the SendFox API for Laravel appl
 You can use the `SendFoxService` to create a contact:
 
 ```php
-use SendFoxIntegration\SendFoxService;
+use Buchin\SendFoxIntegration\SendFoxService;
 
 $service = new SendFoxService();
 
@@ -44,6 +44,44 @@ if ($response->successful()) {
     echo "Contact created successfully!";
 } else {
     echo "Failed to create contact.";
+}
+```
+
+### Automatically Sending User to SendFox on Creation
+
+You can use Laravel's model events to automatically send a user to SendFox when a user is created. For example, in your `User` model:
+
+```php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Buchin\SendFoxIntegration\SendFoxService;
+
+class User extends Model
+{
+    protected static function booted()
+    {
+        static::created(function ($user) {
+            $service = new SendFoxService();
+
+            $nameParts = explode(' ', $user->name, 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName = $nameParts[1] ?? '';
+
+            $response = $service->createContact((object) [
+                'email' => $user->email,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+            ]);
+
+            if ($response->successful()) {
+                Log::info('Contact created successfully in SendFox.');
+            } else {
+                Log::error('Failed to create contact in SendFox.', $response->json());
+            }
+        });
+    }
 }
 ```
 
